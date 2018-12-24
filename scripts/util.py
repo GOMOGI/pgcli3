@@ -748,7 +748,7 @@ def put_pgconf(p_pgver, p_conf):
   return
 
 
-def change_pgconf_keyval(p_pgver, p_key, p_val, p_quote="'", p_replace=False):
+def change_pgconf_keyval(p_pgver, p_key, p_val, p_replace=False):
   s = get_pgconf(p_pgver)
 
   ns = ""
@@ -769,6 +769,7 @@ def change_pgconf_keyval(p_pgver, p_key, p_val, p_quote="'", p_replace=False):
       else:
         line_tokens = old_line.split()
         kount = 0
+
         for tok in line_tokens:
           ##print("DEBUG tok[" + str(kount) + "] = " + tok)
           kount = kount + 1
@@ -776,17 +777,19 @@ def change_pgconf_keyval(p_pgver, p_key, p_val, p_quote="'", p_replace=False):
             for x in range(kount, len(line_tokens)):
               old_val_quoted = old_val_quoted + line_tokens[x]
               ##print("DEBUG old_val_quoted = " + old_val_quoted)
-              if old_val_quoted.endswith(p_quote):
+              if old_val_quoted.endswith("'"):
                 break
 
-
-        old_val = old_val_quoted.replace(p_quote, "")
+        old_val = old_val_quoted.replace("'", "")
         if old_val == "":
           new_val = p_val
         else:
-          new_val = old_val + ", " + p_val
+          if old_val.find(p_val) > 0:
+            new_val = old_val
+          else:
+            new_val = old_val + "," + p_val
 
-      new_line = p_key + " = " + p_quote + new_val + p_quote
+      new_line = p_key + " = '" + new_val + "'"
       print("   old: " + old_line)
       ns = ns + "\n" + new_line
     else:
@@ -796,7 +799,7 @@ def change_pgconf_keyval(p_pgver, p_key, p_val, p_quote="'", p_replace=False):
         ns = ns + "\n" + line
 
   if not boolFoundLine:
-    new_line = p_key + " = " + p_quote + p_val + p_quote
+    new_line = p_key + " = '" + p_val + "'"
     ns = ns + "\n" + new_line
 
   print("   new: " + new_line)

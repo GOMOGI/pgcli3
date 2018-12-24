@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 
 ####################################################################
-########       Copyright (c) 2015-2018 OpenSCG          ############
+########       Copyright (c) 2015-2019 BigSQL           ############
 ####################################################################
 
 import sys
@@ -1690,6 +1690,7 @@ try:
         time.sleep(5)
 
       remove_comp(c)
+      run_script(c, "remove-" + c, "")
 
       extensions_list = meta.get_installed_extensions_list(c)
       for ext in extensions_list:
