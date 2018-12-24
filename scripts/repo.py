@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 
 #################################################################
-########    Copyright (c) 2015-2018 OpenSCG       ###############
+########    Copyright (c) 2015-2019 BigSQL        ###############
 #################################################################
 
 import os, sys, re, json, datetime, logging
