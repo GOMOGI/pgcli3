@@ -742,21 +742,52 @@ def get_pgconf(p_pgver):
 ## write a postgresql.conf string back to a file
 def put_pgconf(p_pgver, p_conf):
   config_file = get_pgconf_filename(p_pgver)
+
   write_string_file(p_conf, config_file)
 
+  return
 
-def change_pgconf_keyval(p_pgver, p_key, p_val, p_delim="'", p_replace=True):
+
+def change_pgconf_keyval(p_pgver, p_key, p_val, p_quote="'", p_replace=False):
   s = get_pgconf(p_pgver)
 
   ns = ""
   lines = s.split('\n')
+  new_line = ""
+  boolFoundLine = False
+  old_val_quoted = ""
+
+  print(" Updating postgresql.conf file:")
+
   for line in lines:
     if line.startswith(p_key) or line.startswith("#" + p_key):
+      boolFoundLine = True
       old_line = line
-      new_line = p_key + " = " + p_delim + p_val + p_delim
-      print(" Updating postgresql.conf file:")
+      
+      if p_replace:
+        new_val = p_val
+      else:
+        line_tokens = old_line.split()
+        kount = 0
+        for tok in line_tokens:
+          ##print("DEBUG tok[" + str(kount) + "] = " + tok)
+          kount = kount + 1
+          if tok == "=":
+            for x in range(kount, len(line_tokens)):
+              old_val_quoted = old_val_quoted + line_tokens[x]
+              ##print("DEBUG old_val_quoted = " + old_val_quoted)
+              if old_val_quoted.endswith(p_quote):
+                break
+
+
+        old_val = old_val_quoted.replace(p_quote, "")
+        if old_val == "":
+          new_val = p_val
+        else:
+          new_val = old_val + ", " + p_val
+
+      new_line = p_key + " = " + p_quote + new_val + p_quote
       print("   old: " + old_line)
-      print("   new: " + new_line)
       ns = ns + "\n" + new_line
     else:
       if ns == "":
@@ -764,7 +795,15 @@ def change_pgconf_keyval(p_pgver, p_key, p_val, p_delim="'", p_replace=True):
       else:
         ns = ns + "\n" + line
 
+  if not boolFoundLine:
+    new_line = p_key + " = " + p_quote + p_val + p_quote
+    ns = ns + "\n" + new_line
+
+  print("   new: " + new_line)
+
   put_pgconf(p_pgver, ns)
+
+  return
 
 
 
@@ -850,6 +889,7 @@ def update_postgresql_conf(p_pgver, p_port, is_new=True,update_listen_addr=True)
 
   print (" ")
   print ("Using PostgreSQL Port " + str(p_port))
+
   return
 
 
