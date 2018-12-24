@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 
 #####################################################
-####      Copyright (c) 2015-2018 OpenSCG        ####
+####      Copyright (c) 2015-2019 BigSQL         ####
 #####################################################
 
 import sys, os, sqlite3, json
@@ -43,6 +43,11 @@ def put_components(p_comp, p_proj, p_ver, p_plat, p_port, p_stat,
   except Exception as e:
     fatal_sql_error(e, sql, "meta.put_components()")
   return
+
+
+def get_extension_parent(ext_comp):
+  ndx = ext_comp.index("-pg")
+  return(ext_comp[(ndx + 1):])
 
 
 def is_extension(ext_comp):

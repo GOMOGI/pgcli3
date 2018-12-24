@@ -654,11 +654,12 @@ def remove_comp(p_comp):
   if isJSON:
     msg = '[{"status":"wip","msg":"'+ msg + '","component":"' + p_comp + '"}]'
   print(msg)
+  script_name = "remove-" + p_comp
   if os.path.isdir(p_comp):
-    script_name = "remove-" + p_comp
     run_script(c, script_name, "")
     util.delete_dir(p_comp)
   if meta.is_extension(p_comp):
+    run_script(meta.get_extension_parent(p_comp), script_name, "")
     manifest_file_name = p_comp + ".manifest"
     manifest_file_path = os.path.join(PGC_HOME, "conf", manifest_file_name)
     util.delete_extension_files(manifest_file_path)
@@ -1690,7 +1691,6 @@ try:
         time.sleep(5)
 
       remove_comp(c)
-      run_script(c, "remove-" + c, "")
 
       extensions_list = meta.get_installed_extensions_list(c)
       for ext in extensions_list:
