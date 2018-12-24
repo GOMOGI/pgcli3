@@ -1,10 +1,10 @@
 from __future__ import print_function, division
 
 ##################################################################
-##########     Copyright (c) 2015-2018 BigSQL      ###############
+##########     Copyright (c) 2015-2019 BigSQL      ###############
 ##################################################################
 
-PGC_VERSION = "4.0.5"
+PGC_VERSION = "4.0.6"
 
 from subprocess import Popen, PIPE, STDOUT
 from datetime import datetime, timedelta

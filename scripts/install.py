@@ -1,9 +1,9 @@
 ##################################################################
-########    Copyright (c) 2015-2018 BigSQL         ###############
+########    Copyright (c) 2015-2019 BigSQL         ###############
 ##################################################################
 
 import sys, os
-PGC_VER="4.0.5"
+PGC_VER="4.0.6"
 PGC_REPO=os.getenv("PGC_REPO", "https://s3.amazonaws.com/pgcentral")
 
 env_ver_pgc = os.getenv("PGC_VER", None)
