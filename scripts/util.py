@@ -718,13 +718,13 @@ def remember_pgpassword(p_passwd, p_port):
   return pw_file
 
 
-## get full pathname of postgresql.conf file
+## get full pathname of postgresql.conf file ##############################
 def get_pgconf_filename(p_pgver):
   pg_data = get_column('datadir', p_pgver)
   return(pg_data + os.sep + 'postgresql.conf')
 
 
-## get the postgresql.conf file into a string
+## get the postgresql.conf file into a string #############################
 def get_pgconf(p_pgver):
   config_file = get_pgconf_filename(p_pgver)
 
@@ -739,7 +739,7 @@ def get_pgconf(p_pgver):
   return(read_file_string(config_file))
 
 
-## write a postgresql.conf string back to a file
+## write a postgresql.conf string back to a file ##########################
 def put_pgconf(p_pgver, p_conf):
   config_file = get_pgconf_filename(p_pgver)
 
@@ -748,49 +748,102 @@ def put_pgconf(p_pgver, p_conf):
   return
 
 
-def change_pgconf_keyval(p_pgver, p_key, p_val, p_replace=False):
+## remove a single line in the postgresql.conf file #######################
+def remove_pgconf_keyval(p_pgver, p_key, p_val=""):
+
+  print(" Removing from postgresql.conf file:")
   s = get_pgconf(p_pgver)
 
   ns = ""
+  new_line = ""
+  old_val_quoted = ""
   lines = s.split('\n')
+  for line in lines:
+    if line.startswith(p_key):
+      if p_val == "":
+        ## skip over this line and continue processing the rest of the file
+        print("   old: " + line)
+        continue
+      else:
+        ns = ns + "\n" + remove_line_val(line, p_val)
+    else:
+      if ns == "":
+        ns = line
+      else:
+        ns = ns + "\n" + line
+
+  put_pgconf(p_pgver, ns)
+
+  return
+
+
+## return a list of tokens of the comma seperated values between the tick marks ###
+def get_val_tokens(p_line):
+  q_start = p_line.index("'", 1)
+  q_end = p_line.index("'", (q_start + 1))
+  old_val = p_line[(q_start + 1):q_end]
+  old_val = old_val.replace(",", " ")
+  return(old_val.split())
+
+
+## remove p_val from the comma separated string inside of p_line ##################
+def remove_line_val(p_line, p_val):
+  old_tokens = get_val_tokens(p_line)
+
+  new_tokens = []
+  for tok in old_tokens:
+     if tok == p_val:
+       continue
+     else:
+        new_tokens.append(tok)
+
+  return(assemble_line_val(p_line, new_tokens))
+
+
+## build up a new key-value line ################################################
+def assemble_line_val(p_old_line, p_new_tokens, p_val=""):
+  tokens = p_old_line.split()
+  key = tokens[0]
+  
+  new_val = ""
+  token_in_list = False
+  for token in p_new_tokens:
+    if new_val == "":
+       new_val = token
+    else:
+       if token == p_val:
+         ## eliminate any duplicates
+         if not token_in_list:
+           new_val = new_val + "," + token
+           token_in_list = True
+
+  new_line = key + " = '" + new_val + "'"
+  print("   new: " + new_line)
+  return(new_line)
+
+
+## change a single line in the postgresql.conf file #############################
+def change_pgconf_keyval(p_pgver, p_key, p_val, p_replace=False):
+
+  print(" Updating postgresql.conf file:")
+  s = get_pgconf(p_pgver)
+
+  ns = ""
   new_line = ""
   boolFoundLine = False
   old_val_quoted = ""
 
-  print(" Updating postgresql.conf file:")
-
+  lines = s.split('\n')
   for line in lines:
     if line.startswith(p_key) or line.startswith("#" + p_key):
       boolFoundLine = True
+
       old_line = line
-      
-      if p_replace:
-        new_val = p_val
-      else:
-        line_tokens = old_line.split()
-        kount = 0
-
-        for tok in line_tokens:
-          ##print("DEBUG tok[" + str(kount) + "] = " + tok)
-          kount = kount + 1
-          if tok == "=":
-            for x in range(kount, len(line_tokens)):
-              old_val_quoted = old_val_quoted + line_tokens[x]
-              ##print("DEBUG old_val_quoted = " + old_val_quoted)
-              if old_val_quoted.endswith("'"):
-                break
-
-        old_val = old_val_quoted.replace("'", "")
-        if old_val == "":
-          new_val = p_val
-        else:
-          if old_val.find(p_val) > 0:
-            new_val = old_val
-          else:
-            new_val = old_val + "," + p_val
-
-      new_line = p_key + " = '" + new_val + "'"
       print("   old: " + old_line)
+
+      old_tokens = get_val_tokens(old_line)
+      new_line = assemble_line_val(old_line, old_tokens, p_val)
+     
       ns = ns + "\n" + new_line
     else:
       if ns == "":
@@ -800,7 +853,7 @@ def change_pgconf_keyval(p_pgver, p_key, p_val, p_replace=False):
 
   if not boolFoundLine:
     new_line = p_key + " = '" + p_val + "'"
-    ns = ns + "\n" + new_line
+    ns = ns + "\n" + new_line + "\n"
 
   print("   new: " + new_line)
 
@@ -809,8 +862,7 @@ def change_pgconf_keyval(p_pgver, p_key, p_val, p_replace=False):
   return
 
 
-
-## process changes to postgresql.conf file 
+## process changes to postgresql.conf file ######################################
 def update_postgresql_conf(p_pgver, p_port, is_new=True,update_listen_addr=True):
   set_column("port", p_pgver, str(p_port))
 
