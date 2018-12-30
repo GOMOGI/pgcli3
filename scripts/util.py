@@ -751,7 +751,7 @@ def put_pgconf(p_pgver, p_conf):
 ## remove a single line in the postgresql.conf file #######################
 def remove_pgconf_keyval(p_pgver, p_key, p_val=""):
 
-  print(" Removing from postgresql.conf file:")
+  print("   Removing from postgresql.conf file:")
   s = get_pgconf(p_pgver)
 
   ns = ""
@@ -760,12 +760,14 @@ def remove_pgconf_keyval(p_pgver, p_key, p_val=""):
   lines = s.split('\n')
   for line in lines:
     if line.startswith(p_key):
+      print("     old: " + line)
       if p_val == "":
         ## skip over this line and continue processing the rest of the file
-        print("   old: " + line)
         continue
       else:
-        ns = ns + "\n" + remove_line_val(line, p_val)
+        new_line = remove_line_val(line, p_val)
+        print("     new: " + new_line)
+        ns = ns + "\n" + new_line
     else:
       if ns == "":
         ns = line
@@ -804,28 +806,41 @@ def remove_line_val(p_line, p_val):
 def assemble_line_val(p_old_line, p_new_tokens, p_val=""):
   tokens = p_old_line.split()
   key = tokens[0]
+  if key.startswith("#"):
+    key = key[1:]
   
   new_val = ""
   token_in_list = False
   for token in p_new_tokens:
-    if new_val == "":
-       new_val = token
+    if token == p_val:
+      if not token_in_list:
+        new_val = append_val(new_val, token)
+        token_in_list = True
     else:
-       if token == p_val:
-         ## eliminate any duplicates
-         if not token_in_list:
-           new_val = new_val + "," + token
-           token_in_list = True
+        new_val = append_val(new_val, token)
+
+  if not token_in_list:
+    new_val = append_val(new_val, p_val)
 
   new_line = key + " = '" + new_val + "'"
-  print("   new: " + new_line)
   return(new_line)
+
+
+## append a value to a comma seperated list ####################################
+def append_val(p_base, p_val):
+  if p_base == "":
+    return(p_val)
+
+  if p_val == "":
+    return(p_base)
+
+  return(p_base + "," + p_val)
 
 
 ## change a single line in the postgresql.conf file #############################
 def change_pgconf_keyval(p_pgver, p_key, p_val, p_replace=False):
 
-  print(" Updating postgresql.conf file:")
+  print("   Updating postgresql.conf file:")
   s = get_pgconf(p_pgver)
 
   ns = ""
@@ -839,10 +854,12 @@ def change_pgconf_keyval(p_pgver, p_key, p_val, p_replace=False):
       boolFoundLine = True
 
       old_line = line
-      print("   old: " + old_line)
+      print("     old: " + old_line)
 
       old_tokens = get_val_tokens(old_line)
+      ##print("DEBUG: old_tokens = " + str(old_tokens))
       new_line = assemble_line_val(old_line, old_tokens, p_val)
+      ##print("DEBUG: new_line = " + new_line)
      
       ns = ns + "\n" + new_line
     else:
@@ -855,7 +872,7 @@ def change_pgconf_keyval(p_pgver, p_key, p_val, p_replace=False):
     new_line = p_key + " = '" + p_val + "'"
     ns = ns + "\n" + new_line + "\n"
 
-  print("   new: " + new_line)
+  print("     new: " + new_line)
 
   put_pgconf(p_pgver, ns)
 
