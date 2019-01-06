@@ -1785,8 +1785,28 @@ try:
       print(" ")
     try:
       l = connL.cursor()
-      sql = "SELECT component, version, platform, status \n" + \
-              "FROM components"
+      days_since_release = \
+        "julianday('now') - julianday(substr(cast(release_date as text), 1, 4) " + \
+        " || '-' || substr(cast(release_date as text), 5, 2) " + \
+        " ||  '-' || substr(cast(release_date as text), 7, 2))"
+      sql = \
+        " SELECT component, version, platform, 'not installed', parent \n" + \
+        "   FROM versions \n" + \
+        "  WHERE is_current = 1 \n" + \
+        "    AND " + days_since_release + " <= 31 \n" + \
+        "    AND " + util.like_pf("platform") + " \n" + \
+        "    AND component NOT IN (SELECT component FROM components) \n" + \
+        "UNION ALL \n" + \
+        " SELECT component, version, platform, 'installed', parent \n" + \
+        "   FROM versions \n" + \
+        "  WHERE is_current = 1 \n" + \
+        "    AND " + days_since_release + " <= 31 \n" + \
+        "    AND " + util.like_pf("platform") + " \n" + \
+        "    AND component IN (SELECT component FROM components) \n" + \
+        "ORDER BY 4, 1, 2"
+      print("DEBUG: \n" + sql)
+      ##sql = "SELECT component, version, platform, status \n" + \
+      ##        "FROM components"
       l.execute(sql)
       rows = l.fetchall()
       l.close()
@@ -1797,6 +1817,7 @@ try:
         c_ver  = str(row[1])
         c_plat = str(row[2])
         c_stat = str(row[3])
+        print("DEBUG: " + c_comp + " v" + c_ver)
         c = connL.cursor()
         sql="SELECT version FROM versions \n" + \
             " WHERE component = ? AND " + util.like_pf("platform") + " \n" + \
