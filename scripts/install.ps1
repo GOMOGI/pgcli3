@@ -1,4 +1,4 @@
-$PGC_VER = "4.0.6"
+$PGC_VER = "4.0.7"
 $PGC_REPO = "https://s3.amazonaws.com/pgcentral"
 
 
