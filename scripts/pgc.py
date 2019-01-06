@@ -440,7 +440,11 @@ def upgrade_component(p_comp):
   if server_running:
     run_script(p_comp, "stop-" + p_comp, "stop")
 
-  msg = "upgrading " + p_comp + " from (" + present_version + ") to (" + update_version + ")"
+  if p_comp == "hub":
+    msg = "updating pgc from v" + present_version + "  to  v" + update_version
+  else:
+    msg = "upgrading " + p_comp + " from (" + present_version + ") to (" + update_version + ")"
+
   my_logger.info(msg)
   if isJSON:
     print('[{"state":"update","status":"start","component":"' + p_comp + '","msg":"'+msg+'"}]')
@@ -1781,7 +1785,8 @@ try:
       print(" ")
     try:
       l = connL.cursor()
-      sql = "SELECT component, version, platform, status FROM components"
+      sql = "SELECT component, version, platform, status \n" + \
+              "FROM components"
       l.execute(sql)
       rows = l.fetchall()
       l.close()
@@ -1835,7 +1840,7 @@ try:
         else:
           meta.get_list(isSHOWDUPS, isEXTENSIONS, isJSON, isTEST, False, p_comp=p_comp)
     except Exception as e:
-      fatal_sql_error(e, sql, "update in mainline")
+      fatal_sql_error(e, sql, "UPDATE in mainline")
 
 
   ## ENABLE, DISABLE ###########################################
