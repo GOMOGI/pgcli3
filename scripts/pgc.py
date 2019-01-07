@@ -1781,72 +1781,83 @@ try:
   ## UPDATE ###################################################
   if (p_mode == 'update'):
     retrieve_remote()
+
     if not isJSON:
       print(" ")
+
     try:
       l = connL.cursor()
-      days_since_release = \
-        "julianday('now') - julianday(substr(cast(release_date as text), 1, 4) " + \
+      rel_date = \
+        "substr(cast(release_date as text), 1, 4) " + \
         " || '-' || substr(cast(release_date as text), 5, 2) " + \
-        " ||  '-' || substr(cast(release_date as text), 7, 2))"
+        " ||  '-' || substr(cast(release_date as text), 7, 2)"
+      days_since_release = \
+        "julianday('now') - julianday(" + rel_date + ")"
       sql = \
-        " SELECT component, version, platform, 'not installed', parent \n" + \
-        "   FROM versions \n" + \
-        "  WHERE is_current = 1 \n" + \
+        " SELECT v.component, v.version, v.platform, 'not installed' as status, \n" + \
+        "        " + rel_date + " as rel_date, r.stage, c.description, c.category\n" + \
+        "   FROM versions v, releases r, projects p, categories c \n" + \
+        "  WHERE v.component = r.component AND r.project = p.project \n" + \
+        "    AND p.category = c.category \n" + \
+        "    AND is_current = 1 \n" + \
         "    AND " + days_since_release + " <= 31 \n" + \
         "    AND " + util.like_pf("platform") + " \n" + \
-        "    AND component NOT IN (SELECT component FROM components) \n" + \
+        "    AND v.component NOT IN (SELECT component FROM components) \n" + \
         "UNION ALL \n" + \
-        " SELECT component, version, platform, 'installed', parent \n" + \
-        "   FROM versions \n" + \
-        "  WHERE is_current = 1 \n" + \
+        " SELECT v.component, v.version, v.platform, 'installed', \n" + \
+        "        " + rel_date + " as rel_date, r.stage, c.description, c.category \n" + \
+                "   FROM versions v, releases r, projects p, categories c \n" + \
+        "  WHERE v.component = r.component  AND r.project = p.project \n" + \
+        "    AND p.category = c.category \n" + \
+        "    AND is_current = 1 \n" + \
         "    AND " + days_since_release + " <= 31 \n" + \
         "    AND " + util.like_pf("platform") + " \n" + \
-        "    AND component IN (SELECT component FROM components) \n" + \
-        "ORDER BY 4, 1, 2"
-      print("DEBUG: \n" + sql)
-      ##sql = "SELECT component, version, platform, status \n" + \
-      ##        "FROM components"
+        "    AND v.component IN (SELECT component FROM components) \n" + \
+        "ORDER BY 4, 8, 1, 2"
+
       l.execute(sql)
       rows = l.fetchall()
       l.close()
+
       hasUpdates = 0
       hub_update = 0
-      for row in rows:
-        c_comp = str(row[0])
-        c_ver  = str(row[1])
-        c_plat = str(row[2])
-        c_stat = str(row[3])
-        print("DEBUG: " + c_comp + " v" + c_ver)
-        c = connL.cursor()
-        sql="SELECT version FROM versions \n" + \
-            " WHERE component = ? AND " + util.like_pf("platform") + " \n" + \
-            "   AND is_current = 1"
-        c.execute(sql, [c_comp])
-        v_row = c.fetchone()
-        if v_row == None:
-          v_ver = c_ver
-        else:
-          v_ver = str(v_row[0])
-        c.close()
-        comp_ver_plat = c_comp + "-" + c_ver
-        if c_plat > "":
-          comp_ver_plat = comp_ver_plat + "-" + c_plat
-        comp_ver_plat = comp_ver_plat + (' ' * (35 - len(comp_ver_plat)))
+      kount = 0
+      jsonList = []
 
-        msg = ""
-        if c_ver >= v_ver:
-          msg = comp_ver_plat + " is up to date."
+      for row in rows:
+        compDict = {}
+
+        compDict['category'] = str(row[6])
+        compDict['component'] = str(row[0])
+        compDict['version'] = str(row[1])
+        compDict['rel_date'] = str(row[4])
+        compDict['status'] = str(row[3])
+
+        stage = str(row[5])
+        if stage == 'test':
+          if not isTEST:
+            continue
+
+        if str(row[0]) == 'hub':
+          hub_update = 1
         else:
-          if c_comp=='hub':
-            hub_update = 1
-          else:
-            hasUpdates = 1
-          msg = comp_ver_plat + " upgrade available to (" + v_ver + ")"
-          my_logger.info(msg)
-        if hub_update == 1:
-          rc = upgrade_component('hub')
-          hub_update = 0
+          hasUpdates = 1
+          kount = kount + 1
+          jsonList.append(compDict)
+
+      if not isJSON:
+        if kount >= 1:
+          print("--- New components & extensions released in the last 30 days ---")
+          headers = ['Category', 'Component', 'Version', 'ReleaseDt', 'Status']
+          keys    = ['category', 'component', 'version', 'rel_date', 'status']
+          print(api.format_data_to_table(jsonList, keys, headers))
+        else:
+          print("--- No new components released in last 30 days ---")
+        print(" ")
+
+      if hub_update == 1:
+        rc = upgrade_component('hub')
+        hub_update = 0
 
       [last_update_utc, last_update_local, unique_id] = util.read_hosts('localhost')
       util.update_hosts('localhost', unique_id, True)
@@ -1854,12 +1865,8 @@ try:
       if isJSON:
         print('[{"status":"completed","has_updates":'+ str(hasUpdates) + '}]')
       else:
-        if hasUpdates == 0:
-          if not isSILENT:
-            print("No updates available.\n")
-            meta.get_list(isSHOWDUPS, isEXTENSIONS, isJSON, isTEST, True, p_comp=p_comp)
-        else:
-          meta.get_list(isSHOWDUPS, isEXTENSIONS, isJSON, isTEST, False, p_comp=p_comp)
+        print("---------- Components available to install or update ------------")
+        meta.get_list(isSHOWDUPS, isEXTENSIONS, isJSON, isTEST, False, p_comp=p_comp)
     except Exception as e:
       fatal_sql_error(e, sql, "UPDATE in mainline")
 
